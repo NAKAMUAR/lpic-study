@@ -1,0 +1,25 @@
+# 依存関係
+node_modules/
+package-lock.json
+
+# ビルド成果物
+dist/
+dist-ssr/
+
+# ローカル設定
+.env
+.env.local
+.env.*.local
+
+# OS / IDE
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.log
+
+# ログ
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
