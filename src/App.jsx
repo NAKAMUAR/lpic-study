@@ -964,6 +964,7 @@ const emptyProgress = () => ({
   goldenIds: [],
   mockHistory: [],
   weakIds: [],
+  srs: {},
   streak: 0,
   lastStudyDate: null,
   totalAnswered: 0,
@@ -977,7 +978,16 @@ const loadProgress = async (uid) => {
   if (!uid) return emptyProgress();
   const data = await loadUserProgress(uid);
   if (!data) return emptyProgress();
-  return { ...emptyProgress(), ...data };
+  const merged = { ...emptyProgress(), ...data };
+  // 既存の苦手で、まだSRS未登録のものを「今日が期日」としてseed
+  const srs = { ...(merged.srs || {}) };
+  (merged.weakIds || []).forEach((id) => {
+    if (!srs[id]) {
+      srs[id] = { ease: 2.3, interval: 0, reps: 0, lapses: 1, due: todayStr() };
+    }
+  });
+  merged.srs = srs;
+  return merged;
 };
 
 const saveProgress = async (uid, progress) => {
@@ -1009,6 +1019,52 @@ const computeStreak = (lastDate, currentStreak) => {
   if (lastDate === t) return currentStreak; // 今日既に学習済
   if (lastDate === yesterdayStr()) return currentStreak + 1;
   return 1; // 空白あり or 初回
+};
+
+// ─────────────────────────────────────────────
+// SRS（間隔反復 / SM-2 を28日試験向けに調整）
+//   ・各問題: { ease, interval, reps, lapses, due }
+//   ・due は 'YYYY-MM-DD'。due <= 今日 なら「今日の復習」に出る。
+//   ・正解で間隔を伸ばし、不正解で翌日に戻す。
+// ─────────────────────────────────────────────
+
+// 今日から days 日後の 'YYYY-MM-DD' を返す
+const addDaysStr = (days) => {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+// ある問題のSRS状態を1回ぶん更新して返す（純粋関数）
+// prev: { ease, interval, reps, lapses, due } または undefined
+// correct: true=正解 / false=不正解
+const applySrs = (prev, correct) => {
+  const base = prev ?? { ease: 2.3, interval: 0, reps: 0, lapses: 0, due: null };
+  let { ease, interval, reps, lapses } = base;
+
+  if (!correct) {
+    reps = 0;
+    interval = 1;                 // 翌日にもう一度
+    lapses += 1;
+    ease = Math.max(1.3, ease - 0.2);
+  } else {
+    if (reps === 0)      interval = 1;   // 初正解 → 翌日
+    else if (reps === 1) interval = 3;   // 2連続 → 3日後
+    else if (reps === 2) interval = 7;   // 3連続 → 1週間後
+    else                 interval = Math.min(21, Math.round(interval * ease)); // 上限21日
+    reps += 1;
+    ease = Math.min(2.6, ease + 0.1);
+  }
+
+  return { ease: +ease.toFixed(2), interval, reps, lapses, due: addDaysStr(interval) };
+};
+
+// 復習期日（due <= 今日）に達した問題IDの配列を返す（四択 QUESTIONS 用・数値ID）
+const getDueQuestionIds = (progress) => {
+  const today = todayStr();
+  return Object.entries(progress.srs || {})
+    .filter(([, s]) => s && s.due && s.due <= today)
+    .map(([id]) => Number(id));
 };
 
 // ─────────────────────────────────────────────
@@ -1141,6 +1197,17 @@ export default function LpicActiveLearning() {
     setScreen('quiz');
   };
 
+  const startSrsReview = () => {
+    const dueIds = getDueQuestionIds(progress);
+    if (dueIds.length === 0) return;
+    const qs = QUESTIONS
+      .filter((q) => dueIds.includes(q.id))
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 15); // 1回あたり最大15問
+    setQuizSession({ mode: 'srsReview', questions: qs, label: '今日の復習' });
+    setScreen('quiz');
+  };
+
   const startFillQuiz = (filterFn) => {
     const pool = filterFn ? FILL_QUESTIONS.filter(filterFn) : FILL_QUESTIONS;
     const qs = [...pool].sort(() => Math.random() - 0.5).slice(0, Math.min(10, pool.length));
@@ -1201,12 +1268,17 @@ export default function LpicActiveLearning() {
     }].slice(-20);  // 直近20件のみ保持
     const newStreak = computeStreak(progress.lastStudyDate, progress.streak);
 
+    // SRS更新（四択）
+    const newSrs = { ...(progress.srs || {}) };
+    results.forEach((r) => { newSrs[r.questionId] = applySrs(newSrs[r.questionId], r.correct); });
+
     setProgress({
       ...progress,
       questionStats: newStats,
       goldStreaks: newGoldStreaks,
       goldenIds: newGoldenIds,
       weakIds: newWeak,
+      srs: newSrs,
       totalAnswered: progress.totalAnswered + results.length,
       totalCorrect: progress.totalCorrect + correctCount,
       streak: newStreak,
@@ -1284,12 +1356,17 @@ export default function LpicActiveLearning() {
 
     const newStreak = computeStreak(progress.lastStudyDate, progress.streak);
 
+    // SRS更新（四択）
+    const newSrs = { ...(progress.srs || {}) };
+    results.forEach((r) => { newSrs[r.questionId] = applySrs(newSrs[r.questionId], r.correct); });
+
     setProgress({
       ...progress,
       questionStats: newStats,
       goldStreaks: newGoldStreaks2,
       goldenIds: newGoldenIds2,
       weakIds: newWeak,
+      srs: newSrs,
       totalAnswered: progress.totalAnswered + results.length,
       totalCorrect: progress.totalCorrect + correctCount,
       completedDays: newCompleted,
@@ -1431,6 +1508,7 @@ export default function LpicActiveLearning() {
           onStartToday={() => todayDayNum && startDay(todayDayNum)}
           onStartDay={startDay}
           onReview={startReview}
+          onSrsReview={startSrsReview}
           onShuffle={startAllShuffle}
           onReset={handleReset}
         />
@@ -1617,10 +1695,11 @@ function TopNav({ screen, setScreen, accuracy, streak, user, isSaving, onSignOut
 // ─────────────────────────────────────────────
 // 道場(ダッシュボード)
 // ─────────────────────────────────────────────
-function Dashboard({ progress, accuracy, todayDayNum, examReadiness, categoryMastery, onStartToday, onStartDay, onReview, onShuffle, onReset }) {
+function Dashboard({ progress, accuracy, todayDayNum, examReadiness, categoryMastery, onStartToday, onStartDay, onReview, onSrsReview, onShuffle, onReset }) {
   const todayDay = todayDayNum ? CURRICULUM.find(d => d.day === todayDayNum) : null;
   const completedRate = Math.round((progress.completedDays.length / 28) * 100);
   const todayDone = progress.lastStudyDate === todayStr();
+  const dueCount = getDueQuestionIds(progress).length;
 
   return (
     <div className="max-w-6xl mx-auto px-6 sm:px-10 py-8 sm:py-12">
@@ -1815,7 +1894,24 @@ function Dashboard({ progress, accuracy, todayDayNum, examReadiness, categoryMas
       </div>
 
       {/* 補助的アクション */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <button
+          onClick={onSrsReview}
+          disabled={dueCount === 0}
+          className={`lc-paper rounded-lg p-5 flex items-center gap-4 text-left lc-anim-fadeup ${dueCount > 0 ? 'lc-card-hover' : 'opacity-50 cursor-not-allowed'}`}
+          style={{ animationDelay: '0.5s' }}
+        >
+          <div className="w-11 h-11 rounded-md flex items-center justify-center" style={{ background: '#163a5f18' }}>
+            <Calendar className="w-5 h-5" style={{ color: '#163a5f' }} />
+          </div>
+          <div className="flex-1">
+            <div className="lc-mincho font-semibold">今日の復習</div>
+            <div className="lc-mincho text-xs" style={{ color: '#7d6b4f' }}>
+              {dueCount > 0 ? `${dueCount}問が復習の期日です` : '今日の復習はありません'}
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4" />
+        </button>
         <button onClick={onShuffle} className="lc-paper lc-card-hover rounded-lg p-5 flex items-center gap-4 text-left lc-anim-fadeup" style={{ animationDelay: '0.55s' }}>
           <div className="w-11 h-11 rounded-md flex items-center justify-center" style={{ background: '#1c181410' }}>
             <Sparkles className="w-5 h-5" style={{ color: '#1c1814' }} />
