@@ -7,8 +7,21 @@ import {
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
-// LPIC-1 v5.0 公式試験範囲 (101-500 / 102-500)
+// LPIC-1 公式試験範囲 (Version 5.0 / 101-500 ・ 102-500)
+//   2026年8月時点で 5.0 が現行版。LPI は3年ごとに小改訂・6年ごとに
+//   全面改訂を行うため、受験前に公式の出題範囲を必ず確認すること。
 // ─────────────────────────────────────────────
+
+// LPIC-1 の最新試験仕様(2026年8月時点)
+const EXAM_SPEC = {
+  version: '5.0',
+  codes: '101-500 / 102-500',
+  durationMin: 90,        // 本番は 90 分
+  questionCount: 60,      // 選択式 + 記述式 あわせて 60 問
+  passScore: '800点満点中 500点',
+  validityYears: 5,       // 認定の有効期間(2試験の合格間隔も5年以内)
+  delivery: 'ピアソンVUE テストセンター / OnVUE オンライン監督試験',
+};
 const OBJECTIVES = [
   { id: '101.1', exam: '101', topic: '101', name: 'ハードウェア設定の決定と構成', weight: 2 },
   { id: '101.2', exam: '101', topic: '101', name: 'システムの起動', weight: 3 },
@@ -71,7 +84,10 @@ const CATEGORIES = [
 ];
 
 // ─────────────────────────────────────────────
-// 問題データ(LPIC-1 v5.0 全範囲対応・217問)
+// 問題データ(LPIC-1 v5.0 全範囲対応)
+// 218番以降は「現行ディストリの実装」を問う最新化分(deb822/dnf5/Wayland/
+// systemd-resolved/nftables 等)。試験範囲は 5.0 のままだが、出題文脈と
+// 実機環境は年々更新されるため、旧来の記述と併せて押さえる。
 // ─────────────────────────────────────────────
 const Q = (id, cat, obj, q, opts, ans, exp, snip) => ({
   id, category: cat, obj: [obj], question: q, options: opts, answer: ans, explanation: exp, snippet: snip
@@ -378,10 +394,30 @@ const QUESTIONS = [
   Q(215,'security','110.3','SSH サーバ自身のホスト鍵が格納されるディレクトリはどれか。',['~/.ssh/','/etc/ssh/','/var/ssh/','/usr/share/ssh/'],1,'/etc/ssh/ssh_host_<種別>_key が秘密鍵、 .pub が公開鍵。種別は rsa/ecdsa/ed25519。クライアント設定は /etc/ssh/ssh_config。','$ sudo ls -l /etc/ssh/ssh_host_*'),
   Q(216,'security','110.3','GnuPG で鍵ペアを生成するコマンドはどれか。',['gpg --full-generate-key','ssh-keygen','openssl genrsa','pgp-create'],0,'gpg --full-generate-key (新)、--gen-key (簡易)。鍵は ~/.gnupg/ に格納。--list-keys, --export, --import, --sign, --encrypt を組合わせ運用。','$ gpg --full-generate-key'),
   Q(217,'security','110.3','GnuPG で鍵を失効させるために事前に作成しておくものはどれか。',['失効証明書(revocation certificate)','パスフレーズ','バックアップ鍵','共通鍵'],0,'失効証明書は鍵生成時に gpg --gen-revoke で作成し別の安全な場所に保管。鍵紛失・漏洩時にインポートして公開すると鍵が失効扱いとなる。','$ gpg --gen-revoke -a -o revoke.asc <KeyID>'),
+
+  // ── 最新化分: 現行ディストリの実装を問う ──
+  Q(218,'install','102.4','Debian 12 / Ubuntu 24.04 以降で推奨される APT リポジトリ定義ファイルの形式はどれか。',['1行形式の .list','deb822形式の .sources','.repo','.conf'],1,'/etc/apt/sources.list.d/*.sources(deb822形式)が現在の推奨。Types/URIs/Suites/Components/Signed-By を行ごとに記述する。従来の .list も引き続き読み込まれる。','$ cat /etc/apt/sources.list.d/ubuntu.sources'),
+  Q(219,'install','102.4','現在の APT でサードパーティリポジトリの署名鍵を登録する適切な方法はどれか。',['apt-key add で登録する','/etc/apt/keyrings/ に鍵を置き Signed-By で参照する','/etc/apt/trusted.gpg を直接編集する','鍵の登録は不要になった'],1,'apt-key は廃止(deprecated)。鍵は /etc/apt/keyrings/*.gpg に置き、sources 側の Signed-By で対象リポジトリだけに紐付けるのが現在の作法。','Signed-By: /etc/apt/keyrings/example.gpg'),
+  Q(220,'install','102.5','Fedora 41 以降で dnf コマンドの既定実装となっているものはどれか。',['yum 3系','dnf5','microdnf','zypper'],1,'dnf5 が既定。yum は dnf への互換リンクという構図は変わらない。コンテナ向けの軽量実装が microdnf(dnf5 では dnf5-minimal)。','$ dnf --version'),
+  Q(221,'install','102.6','デーモンを常駐させず非rootでもコンテナを実行できる、RHEL系標準のコンテナエンジンはどれか。',['podman','dockerd','lxd','cloud-init'],0,'Podman はデーモンレス・rootless が特徴で docker 互換 CLI。VM=独立カーネル、コンテナ=ホストカーネル共有という区別は試験でも頻出。','$ podman run --rm -it alpine sh'),
+  Q(222,'system','101.2','起動に時間を要しているサービスを所要時間順に一覧するコマンドはどれか。',['systemd-analyze blame','systemctl list-units','journalctl -b','dmesg -T'],0,'systemd-analyze blame は各ユニットの起動所要時間、critical-chain は起動のクリティカルパスを表示。','$ systemd-analyze blame | head'),
+  Q(223,'system','101.2','UEFI セキュアブートの有効/無効を確認するコマンドはどれか。',['mokutil --sb-state','efibootmgr -v','bootctl status','grub2-editenv list'],0,'mokutil --sb-state でセキュアブートの状態を表示。UEFI 環境の判別は /sys/firmware/efi の有無、起動エントリ操作は efibootmgr。','$ mokutil --sb-state'),
+  Q(224,'service','108.1','Ubuntu の既定で、軽量な SNTP クライアントとして時刻同期を担う systemd のサービスはどれか。',['systemd-timesyncd','systemd-timedated','chronyd','ntpd'],0,'systemd-timesyncd は軽量なクライアント専用実装。RHEL 系の既定は chronyd。従来の ntpd は保守終了し新規採用は非推奨。','$ timedatectl show-timesync --all'),
+  Q(225,'service','108.2','systemd-journald のログを再起動後も保持するための journald.conf の設定はどれか。',['Storage=persistent','Compress=yes','ForwardToSyslog=yes','SystemMaxUse=1G'],0,'既定は Storage=auto で /var/log/journal が無ければ揮発(/run/log/journal)。Storage=persistent にするか /var/log/journal を作成すると永続化される。','# mkdir -p /var/log/journal && systemctl restart systemd-journald'),
+  Q(226,'network','109.2','Ubuntu で YAML により設定を記述し、NetworkManager や systemd-networkd へ適用する仕組みはどれか。',['netplan','ifupdown','netctl','wicked'],0,'netplan は /etc/netplan/*.yaml を書き、netplan apply でバックエンド(NetworkManager / systemd-networkd)の設定を生成する。','$ sudo netplan apply'),
+  Q(227,'network','109.3','net-tools が既定で入らない現在の環境で、netstat の代わりにソケット状態を表示するコマンドはどれか。',['ss','ip','nmcli','lsof'],0,'ss が netstat の後継。同様に ifconfig→ip addr、route→ip route、arp→ip neigh に置き換わっている。','$ ss -tulnp'),
+  Q(228,'network','109.4','systemd-resolved 環境で実際に使用中の DNS サーバを確認する最も適切な方法はどれか。',['cat /etc/resolv.conf','resolvectl status','nslookup 127.0.0.53','dig localhost'],1,'systemd-resolved 環境の /etc/resolv.conf は 127.0.0.53 を指すスタブであることが多い。実際の上流DNSは resolvectl status で確認する。','$ resolvectl status'),
+  Q(229,'security','110.2','現在の Linux で iptables コマンドの背後にある既定のバックエンドはどれか。',['ipchains','nftables','ipfw','TCP wrappers'],1,'iptables-nft により iptables 構文は nftables バックエンドへ変換される。新規は nft コマンドで記述するのが標準。','$ sudo nft list ruleset'),
+  Q(230,'security','110.2','RHEL 系で標準的に使われるファイアウォール管理のフロントエンドはどれか。',['ufw','firewalld','shorewall','fail2ban'],1,'RHEL 系は firewalld(firewall-cmd)、Ubuntu は ufw が標準的なフロントエンド。いずれも背後は nftables。','$ sudo firewall-cmd --list-all'),
+  Q(231,'security','110.3','現在の OpenSSH で新規に生成する鍵の種別として最も推奨されるものはどれか。',['rsa 1024bit','dsa','ed25519','どれでも同じ'],2,'ed25519 は短い鍵長で高強度・高速。DSA は OpenSSH で既定無効化され、RSA も 3072bit 以上が推奨。','$ ssh-keygen -t ed25519 -C "$(whoami)@$(hostname)"'),
+  Q(232,'desktop','106.1','Ubuntu 24.04 や RHEL 9 の GNOME で既定となっている表示サーバのプロトコルはどれか。',['X11','Wayland','Mir','XDMCP'],1,'既定セッションは Wayland。X11 専用アプリは互換層 XWayland 経由で動作する。試験の記述は X11 中心だが、実機は Wayland である点に注意。','$ echo $XDG_SESSION_TYPE'),
+  Q(233,'filesystem','104.1','RHEL 系の既定ファイルシステムと、マウントしたまま拡張するコマンドの組合せはどれか。',['ext4 / resize2fs','XFS / xfs_growfs','Btrfs / btrfs balance','ZFS / zpool add'],1,'RHEL 系の既定は XFS で拡張は xfs_growfs(縮小は不可)。ext4 は resize2fs、Fedora/openSUSE 既定の Btrfs は btrfs filesystem resize。','$ sudo xfs_growfs /'),
+  Q(234,'admin','107.2','有効なタイマーユニットと次回起動時刻を一覧するコマンドはどれか。',['systemctl list-timers','crontab -l','atq','systemctl list-units --type=service'],0,'logrotate や fstrim など標準ジョブの多くは cron から systemd timer へ移行済み。systemctl list-timers --all で無効分も表示。','$ systemctl list-timers'),
+  Q(235,'admin','107.3','システム全体のロケール設定(/etc/locale.conf)を表示・変更する systemd のコマンドはどれか。',['localectl','timedatectl','locale-gen','iconv'],0,'localectl status で現在のロケールとキーマップ、localectl set-locale LANG=ja_JP.UTF-8 で変更。時刻は timedatectl が対応する。','$ localectl set-locale LANG=ja_JP.UTF-8'),
 ];
 
 // ─────────────────────────────────────────────
-// 記述式問題(コマ問)40問
+// 記述式問題(コマ問)
 // LPIC本試験では約3-4割が記述式・選択補完式。スペル精度が問われる。
 // 形式: { id, obj, prompt, expectedAnswer, alternates, hint, explanation }
 // alternates: 別解として受理する文字列の配列(完全一致比較)
@@ -541,6 +577,26 @@ const FILL_QUESTIONS = [
   { id: 'F40', obj: '110.3', prompt: 'ed25519 アルゴリズムで SSH 鍵ペアを生成するコマンドを完成させよ。「ssh-keygen ____ ed25519」',
     expectedAnswer: '-t', alternates: ['-t '], hint: 'type の頭文字',
     explanation: 'ssh-keygen -t ed25519。-b ビット長、-f 出力先、-C コメント。秘密鍵は 600 必須。' },
+
+  // ── 最新化分: 現行環境のコマンド ──
+  { id: 'F41', obj: '109.4', prompt: 'systemd-resolved 環境で、実際に使用中の DNS サーバと検索ドメインを表示するコマンドを記述せよ。',
+    expectedAnswer: 'resolvectl status', alternates: ['resolvectl', 'systemd-resolve --status'], hint: 'resolv + ctl',
+    explanation: 'resolvectl status。/etc/resolv.conf は 127.0.0.53 のスタブを指すことが多く、実体の確認にはこちらを使う。' },
+  { id: 'F42', obj: '107.2', prompt: '有効なタイマーユニットと次回起動時刻を一覧する systemctl のサブコマンドを記述せよ。「systemctl ____」',
+    expectedAnswer: 'list-timers', alternates: ['list-timers --all'], hint: 'list- で始まる',
+    explanation: 'systemctl list-timers。cron から移行した標準ジョブ(logrotate, fstrim 等)はここに現れる。' },
+  { id: 'F43', obj: '110.2', prompt: '現在の netfilter 設定を一括表示する nftables のコマンドを記述せよ。「nft ____」',
+    expectedAnswer: 'list ruleset', alternates: ['list ruleset '], hint: 'list + ルールセット',
+    explanation: 'nft list ruleset。iptables コマンドも既定で nftables バックエンド(iptables-nft)経由で動作する。' },
+  { id: 'F44', obj: '101.2', prompt: '各ユニットの起動所要時間を長い順に表示する systemd-analyze のサブコマンドを記述せよ。「systemd-analyze ____」',
+    expectedAnswer: 'blame', alternates: [], hint: '「責任を問う」の意',
+    explanation: 'systemd-analyze blame。起動のクリティカルパスは systemd-analyze critical-chain。' },
+  { id: 'F45', obj: '107.3', prompt: 'システム全体のロケールとキーマップを表示する systemd のコマンドを記述せよ。',
+    expectedAnswer: 'localectl', alternates: ['localectl status'], hint: 'locale + ctl',
+    explanation: 'localectl(status)。設定は /etc/locale.conf。時刻系は timedatectl が対応する。' },
+  { id: 'F46', obj: '102.4', prompt: '保留(phased/held back)を含めて依存関係の変更も許可しつつ全パッケージを更新する apt のサブコマンドを記述せよ。「apt ____」',
+    expectedAnswer: 'full-upgrade', alternates: ['dist-upgrade'], hint: 'upgrade の強い版',
+    explanation: 'apt full-upgrade(旧 dist-upgrade)。apt upgrade は削除を伴う更新を行わない。' },
 ];
 
 
@@ -562,6 +618,7 @@ const CURRICULUM = [
       { term: '/proc と /sys', desc: 'カーネル情報の仮想FS。/proc/cpuinfo, /proc/meminfo 等。' },
       { term: 'udev', desc: 'デバイスのホットプラグを検知し /dev に動的作成。/etc/udev/rules.d/。' },
       { term: 'modprobe / lsmod', desc: 'カーネルモジュールのロード/一覧。insmod は依存解決しない低レベル。' },
+      { term: 'udevadm(現行)', desc: 'udevadm info -q all -n /dev/sda で属性確認、udevadm monitor でホットプラグ追跡。現在の実体は systemd-udevd。' },
     ],
     commands: [
       { cmd: 'lspci | grep -i ethernet', desc: 'PCIデバイス確認' },
@@ -575,18 +632,21 @@ const CURRICULUM = [
       { term: 'BIOS と UEFI', desc: 'UEFI は新規格で GPT と組合わせ。/sys/firmware/efi の有無で判別。' },
       { term: 'initramfs', desc: '一時ルートFS。必要ドライバを読み、本来のルートFSへ pivot_root。' },
       { term: 'dmesg / journalctl -k', desc: 'カーネルメッセージ確認。-T で人間可読日時。' },
+      { term: 'systemd-analyze(現行)', desc: 'blame で起動所要時間、critical-chain でクリティカルパス。起動遅延の調査はまずこれ。' },
+      { term: 'UEFI セキュアブート(現行)', desc: 'shim → GRUB2 → 署名済みカーネルの順に検証。状態確認は mokutil --sb-state。' },
     ],
     commands: [
       { cmd: 'dmesg -T | tail -20', desc: 'カーネルログ' },
       { cmd: 'journalctl -b -k', desc: '今回のブート以降' },
     ],
-    questionIds: [6, 7, 8, 9] },
+    questionIds: [6, 7, 8, 9, 222, 223] },
   { day: 3, week: 1, exam: '101', objIds: ['101.3'], title: 'ランレベル・systemdターゲット', goal: 'SysVinitとsystemd両方の概念で動作モードを切替えられる。',
     concepts: [
       { term: 'SysVinit ランレベル', desc: '0=停止、1=シングル、2-3=マルチ、5=GUI、6=再起動。' },
       { term: 'systemd target', desc: 'rescue=旧1、multi-user=旧3、graphical=旧5。' },
       { term: 'systemctl', desc: 'start/stop/restart/status/enable/disable/mask/isolate。' },
       { term: 'shutdown / wall', desc: 'shutdown -h/-r [時刻]。wall で全端末通知。' },
+      { term: '現在の主流', desc: 'RHEL 9/10・Ubuntu 24.04・Debian 12/13 はすべて systemd。SysVinit のランレベルは「試験のための対応表」と割り切って暗記する。' },
     ],
     commands: [
       { cmd: 'systemctl get-default', desc: '既定ターゲット' },
@@ -601,6 +661,7 @@ const CURRICULUM = [
       { term: 'LVM', desc: 'PV→VG→LV の階層。動的拡張・スナップショット。' },
       { term: 'GRUB 2', desc: '/etc/default/grub と /etc/grub.d/ → grub-mkconfig。' },
       { term: 'GRUB Legacy', desc: '旧版。/boot/grub/menu.lst を直接編集。' },
+      { term: '設定生成先の違い(現行)', desc: 'Debian系は grub-mkconfig -o /boot/grub/grub.cfg、RHEL系は grub2-mkconfig -o /boot/grub2/grub.cfg。UEFI ではさらに ESP 配下を参照。' },
     ],
     commands: [
       { cmd: 'sudo grub-install /dev/sda', desc: 'MBRにインストール' },
@@ -624,13 +685,17 @@ const CURRICULUM = [
       { term: 'dpkg', desc: '低レベル。-i 導入、-l 一覧、-L 内容、-S ファイル検索、-r 削除、-P 完全削除。' },
       { term: 'apt-cache', desc: 'ローカル索引検索。search、show、policy。' },
       { term: 'dpkg-reconfigure', desc: '対話的に設定再実行。tzdata、locales 等で頻繁。' },
+      { term: 'deb822 形式(現行)', desc: 'Debian 12・Ubuntu 24.04 以降は /etc/apt/sources.list.d/*.sources が主流。Types/URIs/Suites/Components/Signed-By を行で記述。' },
+      { term: 'apt-key は廃止(現行)', desc: '署名鍵は /etc/apt/keyrings/ に置き、sources 側の Signed-By で紐付けるのが現在の作法。' },
     ],
     commands: [
       { cmd: 'sudo apt update && sudo apt upgrade', desc: '索引→実体更新' },
       { cmd: 'apt-cache search "image viewer"', desc: '名称検索' },
       { cmd: 'sudo apt purge nginx', desc: '設定込み削除' },
+      { cmd: 'apt list --upgradable', desc: '更新可能一覧(現行)' },
+      { cmd: 'sudo apt full-upgrade', desc: '依存変更を伴う更新' },
     ],
-    questionIds: [29, 30, 31, 32, 33, 34] },
+    questionIds: [29, 30, 31, 32, 33, 34, 218, 219] },
   { day: 7, week: 1, exam: '101', objIds: ['102.5', '102.6'], title: 'RPM系パッケージ管理と仮想化', goal: 'rpm/dnf/yum/zypperを使い分け、仮想化の概要を掴む。',
     concepts: [
       { term: 'rpm の問い合わせ', desc: '-qa 全一覧、-qf ファイル所有、-ql 内容、-qi 詳細、-V 整合性検証。' },
@@ -638,12 +703,14 @@ const CURRICULUM = [
       { term: 'zypper', desc: 'SUSE 系の高レベル。in/rm/up/se 等の短縮形。' },
       { term: 'rpm2cpio', desc: 'インストールせず中身だけ展開。' },
       { term: '仮想化とコンテナ', desc: 'VM=独立カーネル、コンテナ=ホストカーネル共有。cloud-init で初期化。' },
+      { term: 'dnf5(現行)', desc: 'Fedora 41 以降の既定実装。yum は dnf への互換リンクという関係は不変。軽量版は microdnf。' },
+      { term: 'Podman(現行)', desc: 'デーモンレス・rootless が特徴で RHEL 系の標準。docker 互換 CLI。' },
     ],
     commands: [
       { cmd: 'rpm -qf /usr/bin/ls', desc: 'ファイル所有パッケージ' },
       { cmd: 'sudo dnf install httpd', desc: '依存込み導入' },
     ],
-    questionIds: [35, 36, 37, 38, 39, 40, 41] },
+    questionIds: [35, 36, 37, 38, 39, 40, 41, 220, 221] },
 
   // ── Week 2: 101後半 ──
   { day: 8, week: 2, exam: '101', objIds: ['103.1'], title: 'コマンドラインの基礎', goal: 'bash の対話操作・履歴・変数・man を自在に扱う。',
@@ -726,6 +793,7 @@ const CURRICULUM = [
     concepts: [
       { term: 'パーティション', desc: 'fdisk(MBR)、gdisk(GPT)、parted(両対応)。LVM。' },
       { term: 'mkfs.<種別>', desc: 'ext4 / xfs / vfat / btrfs。スワップは mkswap → swapon。' },
+      { term: '既定FSの現在', desc: 'RHEL 系は XFS(拡張 xfs_growfs・縮小不可)、Fedora/openSUSE は Btrfs、Debian/Ubuntu は ext4(拡張 resize2fs)。' },
       { term: 'fsck と tune2fs', desc: 'fsck 整合性検査、xfs_repair (XFS)。tune2fs 調整。' },
       { term: '/etc/fstab', desc: 'device mountpoint type options dump pass。UUID 推奨。' },
       { term: 'パーミッション', desc: '755=rwxr-xr-x。SUID 4xxx、SGID 2xxx、sticky 1xxx。' },
@@ -737,7 +805,7 @@ const CURRICULUM = [
       { cmd: 'sudo blkid /dev/sdb1', desc: 'UUID確認' },
       { cmd: 'find / -perm -4000 2>/dev/null', desc: 'SUID監査' },
     ],
-    questionIds: [92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118],
+    questionIds: [92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 233],
     isReview: true },
 
   // ── Week 3: 102前半 ──
@@ -771,7 +839,7 @@ const CURRICULUM = [
     concepts: [
       { term: 'Xクライアント・サーバ', desc: 'サーバが画面と入力、クライアントがアプリ。DISPLAY 環境変数。' },
       { term: 'xhost と xauth', desc: 'xhost=ホスト単位、xauth=鍵ベース(より安全)。' },
-      { term: 'Wayland', desc: 'X11 の後継プロトコル。XWayland で互換層。' },
+      { term: 'Wayland(現在の既定)', desc: 'Ubuntu 24.04・RHEL 9/10 の GNOME は Wayland が既定セッション。X11 専用アプリは XWayland 経由。echo $XDG_SESSION_TYPE で確認。試験の記述は X11 中心である点に注意。' },
       { term: '主要 DE', desc: 'GNOME、KDE Plasma、Xfce、MATE、Cinnamon。' },
       { term: 'アクセシビリティ', desc: 'Screen Reader (Orca)、Magnifier、Sticky/Slow/Bounce Keys 等。' },
       { term: 'リモートデスクトップ', desc: 'VNC、XDMCP、RDP(xrdp)、Spice。' },
@@ -780,7 +848,7 @@ const CURRICULUM = [
       { cmd: 'echo $DISPLAY', desc: '表示先' },
       { cmd: 'xhost +localhost', desc: 'ローカル許可' },
     ],
-    questionIds: [134, 135, 136, 137, 138, 139, 140, 141, 142] },
+    questionIds: [134, 135, 136, 137, 138, 139, 140, 141, 142, 232] },
   { day: 18, week: 3, exam: '102', objIds: ['107.1'], title: 'ユーザ・グループ管理 (重要度5)', goal: 'useradd〜usermod〜passwd〜chage の流れを完璧に。',
     concepts: [
       { term: '/etc/passwd の7欄', desc: 'name:passwd:UID:GID:GECOS:home:shell。' },
@@ -804,12 +872,13 @@ const CURRICULUM = [
       { term: 'at', desc: '一度きり指定時刻実行。atq 一覧、atrm 取消。' },
       { term: 'systemd timer', desc: '.timer ユニットと対応 .service の組。systemctl list-timers。' },
       { term: 'アクセス制御', desc: '/etc/cron.allow と /etc/cron.deny。allow が優先。' },
+      { term: 'timer への移行(現行)', desc: 'logrotate や fstrim など標準ジョブの多くは cron から systemd timer へ移行済み。systemctl list-timers で実機を確認。' },
     ],
     commands: [
       { cmd: 'crontab -e', desc: '個人 cron 編集' },
       { cmd: 'echo "/path/cmd" | at 23:00', desc: '一回限りジョブ' },
     ],
-    questionIds: [151, 152, 153, 154, 155] },
+    questionIds: [151, 152, 153, 154, 155, 234] },
   { day: 20, week: 3, exam: '102', objIds: ['107.3'], title: 'ローカライゼーションと国際化', goal: 'LANG/LC_*/TZ・iconv・timedatectl を扱える。',
     concepts: [
       { term: 'ロケール優先順位', desc: 'LC_ALL > LC_* > LANG。' },
@@ -817,12 +886,13 @@ const CURRICULUM = [
       { term: 'timedatectl', desc: 'set-timezone, set-time, set-ntp。status で現状。' },
       { term: 'iconv', desc: '-f 元 -t 先 でエンコード変換。' },
       { term: '主要ロケール', desc: 'C/POSIX、en_US.UTF-8、ja_JP.UTF-8。' },
+      { term: 'localectl(現行)', desc: 'システムロケールとキーマップの表示・変更。実体は /etc/locale.conf。時刻系の timedatectl と対になる。' },
     ],
     commands: [
       { cmd: 'LANG=C date', desc: '英語表記で日付' },
       { cmd: 'sudo timedatectl set-timezone Asia/Tokyo', desc: 'TZ変更' },
     ],
-    questionIds: [156, 157, 158, 159] },
+    questionIds: [156, 157, 158, 159, 235] },
   { day: 21, week: 3, exam: '102', objIds: ['105.1', '105.2', '107.1', '107.2', '107.3'], title: '第3週 総復習', goal: 'シェル+管理業務の全範囲を通しで確認。',
     concepts: [
       { term: '今週の重点', desc: 'シェル起動ファイル、スクリプト構文、useradd/usermod、cron/at/timer、ロケール・TZ。' },
@@ -842,16 +912,18 @@ const CURRICULUM = [
       { term: 'journalctl', desc: '-u ユニット、-k カーネル、-f 追従、--since 時刻、-p 優先度、-b ブート単位。' },
       { term: 'logrotate', desc: '/etc/logrotate.conf と /etc/logrotate.d/。daily/weekly、rotate 回数、compress。' },
       { term: 'logger', desc: 'コマンドラインから syslog にログ書込。-t タグ、-p facility.priority。' },
+      { term: '時刻同期の現在', desc: 'RHEL 系は chronyd、Ubuntu は systemd-timesyncd が既定。ntpd は保守終了で新規採用は非推奨。' },
+      { term: 'journal の永続化(現行)', desc: '既定は揮発(/run/log/journal)。/var/log/journal を作るか journald.conf で Storage=persistent にすると再起動後も残る。' },
     ],
     commands: [
       { cmd: 'timedatectl status', desc: '時刻状態' },
       { cmd: 'chronyc sources', desc: 'NTPソース' },
       { cmd: 'journalctl --since "1 hour ago" -u nginx', desc: 'ユニット別最近ログ' },
     ],
-    questionIds: [160, 161, 162, 163, 164, 165, 166, 167, 168, 169] },
+    questionIds: [160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 224, 225] },
   { day: 23, week: 4, exam: '102', objIds: ['108.3', '108.4'], title: 'MTA と印刷', goal: 'メールエイリアス・転送・MTA識別と CUPS 印刷を扱える。',
     concepts: [
-      { term: '主要 MTA', desc: 'postfix、sendmail、exim。' },
+      { term: '主要 MTA', desc: 'postfix、sendmail、exim。新規構築は Postfix がほぼ既定。sendmail は歴史的、exim は Debian の旧既定。' },
       { term: '/etc/aliases', desc: '形式 "alias: target1, target2"。編集後 newaliases で /etc/aliases.db。' },
       { term: '~/.forward', desc: 'ユーザ自身が転送設定。各行に転送先メールアドレス。' },
       { term: 'mailq', desc: '送信待ち・延滞メール一覧。' },
@@ -871,6 +943,7 @@ const CURRICULUM = [
       { term: 'TCP / UDP / ICMP', desc: 'TCP=コネクション指向、UDP=コネクションレス、ICMP=制御メッセージ。' },
       { term: 'IPv6', desc: '128bit。: 区切り 8 ブロック。:: で連続 0 を省略可能。' },
       { term: '/etc/services', desc: 'サービス名→ポート/プロトコルの対応表。' },
+      { term: 'デュアルスタックの現在', desc: 'IPv4/IPv6 併用が標準。リンクローカル fe80::/10、ULA fc00::/7。ip -6 addr で確認。' },
     ],
     commands: [
       { cmd: 'ip -br addr', desc: 'IP簡潔表示' },
@@ -885,15 +958,18 @@ const CURRICULUM = [
       { term: 'ss', desc: '-t TCP、-u UDP、-l LISTEN、-n 数値、-p プロセス。' },
       { term: 'ping / traceroute / tracepath', desc: '到達性 / 経路追跡 / 権限不要版。' },
       { term: 'nc (netcat)', desc: '-zv ポート疎通、-l リスナー、-u UDP。' },
+      { term: 'netplan / systemd-networkd(現行)', desc: 'Ubuntu は /etc/netplan/*.yaml を netplan apply で適用し、NetworkManager か systemd-networkd に委譲する。' },
+      { term: 'net-tools は非搭載(現行)', desc: 'ifconfig / netstat / route / arp は既定で入らない環境が主流。ip addr / ss / ip route / ip neigh を使う。' },
     ],
     commands: [
       { cmd: 'sudo ss -tlnp', desc: 'リスニングポート' },
       { cmd: 'nc -zv example.com 443', desc: 'ポート疎通' },
     ],
-    questionIds: [185, 186, 187, 188, 189, 190, 191, 192, 193, 194] },
+    questionIds: [185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 226, 227] },
   { day: 26, week: 4, exam: '102', objIds: ['109.4'], title: 'クライアント側 DNS', goal: 'resolv.conf・nsswitch・dig/host/getent を整理する。',
     concepts: [
-      { term: '/etc/resolv.conf', desc: 'nameserver/search/options。systemd-resolved 環境では実体が異なる。' },
+      { term: '/etc/resolv.conf', desc: 'nameserver/search/options。行頭 nameserver は最大3件。' },
+      { term: 'systemd-resolved(現行)', desc: '多くの環境で /etc/resolv.conf は 127.0.0.53 を指すスタブ。実際の上流DNSは resolvectl status で確認する。' },
       { term: '/etc/nsswitch.conf', desc: '名前解決の参照順序を hosts: で定義。例: "files dns"。' },
       { term: 'dig', desc: '構造的応答表示。+short、+trace、MX/NS/AAAA/TXT 等のレコード種別指定。' },
       { term: 'host', desc: '簡潔な DNS ルックアップ。-t でレコード種別指定。' },
@@ -903,14 +979,16 @@ const CURRICULUM = [
       { cmd: 'dig +short example.com', desc: 'A レコード' },
       { cmd: 'dig MX example.com', desc: 'MX レコード' },
     ],
-    questionIds: [195, 196, 197] },
+    questionIds: [195, 196, 197, 228] },
   { day: 27, week: 4, exam: '102', objIds: ['110.1', '110.2', '110.3'], title: 'セキュリティ統合', goal: 'sudo・SSH・GnuPG・TCP wrappers・shadow を運用に組込める。',
     concepts: [
       { term: 'sudo / visudo', desc: '/etc/sudoers と /etc/sudoers.d/。visudo で構文チェック付き編集。' },
       { term: 'SSH 鍵認証', desc: 'ssh-keygen → authorized_keys。known_hosts でなりすまし検知、ssh-agent で鍵管理。' },
       { term: 'SSH ポート転送', desc: '-L 局所→遠隔、-R 遠隔→局所、-D ダイナミック、-X X11、-A エージェント。' },
       { term: 'GnuPG', desc: '--full-generate-key、--encrypt、--sign、--verify。失効証明書を事前生成。' },
-      { term: 'TCP wrappers', desc: '/etc/hosts.allow → /etc/hosts.deny の順で評価。許可優先。' },
+      { term: 'TCP wrappers', desc: '/etc/hosts.allow → /etc/hosts.deny の順で評価。許可優先。glibc から libwrap が外れた現在の主要ディストリでは実質使われず、試験知識として押さえる。' },
+      { term: 'ファイアウォールの現在', desc: 'iptables は nftables バックエンド(iptables-nft)へ置換済み。運用は firewalld(RHEL)/ ufw(Ubuntu)、直接記述は nft。' },
+      { term: 'SSH 運用の現在', desc: '鍵は ed25519 が推奨。ssh-copy-id で配布し、sshd_config で PasswordAuthentication no にするのが標準構成。' },
       { term: 'シャドウパスワード', desc: '/etc/passwd と /etc/shadow を分離。pwconv/pwunconv で切替。' },
       { term: 'リソース制限', desc: 'ulimit でシェル単位、/etc/security/limits.conf で永続。' },
       { term: 'ログイン状況', desc: 'who / w 現在、last 履歴、lastb 失敗。' },
@@ -920,12 +998,13 @@ const CURRICULUM = [
       { cmd: 'ssh-keygen -t ed25519', desc: '鍵生成' },
       { cmd: 'gpg --full-generate-key', desc: 'GPG鍵生成' },
     ],
-    questionIds: [198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217] },
+    questionIds: [198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 229, 230, 231] },
   { day: 28, week: 4, exam: '102', objIds: ['101.2', '102.4', '103.5', '104.5', '105.2', '107.1', '108.2', '109.3', '110.3'], title: '模擬試験 + 総仕上げ', goal: '101+102 の全範囲から出題される擬似試験で本番想定の演習。',
     concepts: [
-      { term: '本番への心構え', desc: '60問60分。迷ったら一度飛ばし、後で戻る。確実な問題から。' },
+      { term: '本番への心構え', desc: '60問90分(1問あたり90秒)。迷ったら一度飛ばし、後で戻る。確実な問題から。' },
       { term: '弱点の特定', desc: '本日の結果で重点復習領域を決める。誤答カテゴリの傾向を見る。' },
-      { term: '次のステップ', desc: 'このアプリで土台ができたら、次は LPI-Japan 認定教材 + Ping-t で量を確保。' },
+      { term: '受験の実務(2026年時点)', desc: '現行は Version 5.0(101-500 / 102-500)。各90分60問、合格は800点満点中500点。ピアソンVUE のテストセンターまたは OnVUE オンライン監督試験で受験でき、認定は5年間有効。' },
+      { term: '次のステップ', desc: '土台ができたら Ping-t や公式教材で量を確保し、同時に実機(VM やコンテナ)で ip / ss / systemctl / journalctl を毎日触ること。' },
     ],
     commands: [
       { cmd: '# 仕上げの鍵', desc: '誤答した問題は3日以内にもう一度。理由を声に出して説明できるか。' },
@@ -950,9 +1029,10 @@ import {
 // ─────────────────────────────────────────────
 // 本試験モード設定
 // ─────────────────────────────────────────────
-const MOCK_EXAM_DURATION_SEC = 60 * 60;  // 60分
-const MOCK_EXAM_QUESTION_COUNT = 60;     // 60問
-const MOCK_EXAM_PASS_LINE = 0.65;        // 65%
+const MOCK_EXAM_DURATION_SEC = EXAM_SPEC.durationMin * 60;  // 90分(本番準拠)
+const MOCK_EXAM_QUESTION_COUNT = EXAM_SPEC.questionCount;   // 60問
+// 本番は 800点満点中 500点(≒62.5%)。ここでは安全余裕を見て 65% を合格ラインとする。
+const MOCK_EXAM_PASS_LINE = 0.65;
 const GOLD_STREAK_TARGET = 2;            // 2回連続正解で金メダル
 
 const emptyProgress = () => ({
@@ -960,6 +1040,7 @@ const emptyProgress = () => ({
   dayResults: {},
   questionStats: {},
   fillStats: {},
+  fillSrs: {},
   goldStreaks: {},
   goldenIds: [],
   mockHistory: [],
@@ -1065,6 +1146,83 @@ const getDueQuestionIds = (progress) => {
   return Object.entries(progress.srs || {})
     .filter(([, s]) => s && s.due && s.due <= today)
     .map(([id]) => Number(id));
+};
+
+// 記述式(コマ問)の復習期日に達したIDの配列（文字列ID）
+const getDueFillIds = (progress) => {
+  const today = todayStr();
+  return Object.entries(progress.fillSrs || {})
+    .filter(([, s]) => s && s.due && s.due <= today)
+    .map(([id]) => id);
+};
+
+// ─────────────────────────────────────────────
+// リーチ（何度も落ちる問題）
+//   lapses が閾値以上で、まだ金メダル(2回連続正解)に至っていない問題。
+//   放置すると本番で確実に落とすため、別枠で優先的に潰す。
+// ─────────────────────────────────────────────
+const LEECH_LAPSES = 4;
+
+const getLeechIds = (progress) => Object.entries(progress.srs || {})
+  .filter(([id, st]) => st && (st.lapses || 0) >= LEECH_LAPSES && !(progress.goldenIds || []).includes(Number(id)))
+  .map(([id]) => Number(id));
+
+// ─────────────────────────────────────────────
+// 重み付き出題 + インターリービング
+//   ・出題比重(OBJECTIVES.weight)が高い項目ほど厚く
+//   ・正解率が低い / 未着手 / リーチ / 期日到来 の問題を厚く
+//   ・定着済み(金メダル)は薄く
+//   ・抽出後、同じカテゴリが連続しないよう並べ替える（インターリービング）
+// ─────────────────────────────────────────────
+const OBJ_WEIGHT = OBJECTIVES.reduce((acc, o) => { acc[o.id] = o.weight; return acc; }, {});
+
+const questionPriority = (q, progress) => {
+  const weight = Math.max(1, ...q.obj.map((o) => OBJ_WEIGHT[o] || 1));
+  const stat = (progress.questionStats || {})[q.id];
+  const srs = (progress.srs || {})[q.id];
+  let factor;
+  if (!stat || stat.attempts === 0) {
+    factor = 1.6;                                   // 未着手を優先
+  } else {
+    const acc = stat.correct / stat.attempts;
+    factor = 0.6 + (1 - acc) * 1.6;                 // 正解率が低いほど厚く
+  }
+  if ((progress.goldenIds || []).includes(q.id)) factor *= 0.35;         // 定着済みは薄く
+  if (srs && (srs.lapses || 0) >= LEECH_LAPSES)    factor *= 1.8;        // リーチは厚く
+  if (srs && srs.due && srs.due <= todayStr())     factor *= 1.4;        // 期日到来も厚く
+  return weight * factor;
+};
+
+// 重みつき非復元抽出
+const pickWeighted = (pool, n, progress) => {
+  const items = pool.map((q) => ({ q, w: questionPriority(q, progress) }));
+  const picked = [];
+  while (picked.length < n && items.length > 0) {
+    const total = items.reduce((a, b) => a + b.w, 0);
+    let r = Math.random() * total;
+    let idx = items.length - 1;
+    for (let i = 0; i < items.length; i++) {
+      r -= items[i].w;
+      if (r <= 0) { idx = i; break; }
+    }
+    picked.push(items[idx].q);
+    items.splice(idx, 1);
+  }
+  return picked;
+};
+
+// 同じカテゴリが連続しないよう貪欲に並べ替える
+const interleaveByCategory = (questions) => {
+  const rest = [...questions];
+  const out = [];
+  while (rest.length > 0) {
+    const prev = out[out.length - 1];
+    let idx = rest.findIndex((q) => !prev || q.category !== prev.category);
+    if (idx < 0) idx = 0;
+    out.push(rest[idx]);
+    rest.splice(idx, 1);
+  }
+  return out;
 };
 
 // ─────────────────────────────────────────────
@@ -1186,32 +1344,52 @@ export default function LpicActiveLearning() {
 
   const startReview = () => {
     if (progress.weakIds.length === 0) return;
-    const qs = QUESTIONS.filter(q => progress.weakIds.includes(q.id)).sort(() => Math.random() - 0.5);
-    setQuizSession({ mode: 'review', questions: qs, label: '苦手復習' });
+    const leech = getLeechIds(progress);
+    const qs = QUESTIONS
+      .filter(q => progress.weakIds.includes(q.id))
+      .sort(() => Math.random() - 0.5)
+      // リーチ(何度も落ちる問題)を先頭に寄せる
+      .sort((a, b) => (leech.includes(b.id) ? 1 : 0) - (leech.includes(a.id) ? 1 : 0));
+    setQuizSession({ mode: 'review', questions: qs, label: leech.length > 0 ? '苦手復習(リーチ優先)' : '苦手復習' });
     setScreen('quiz');
   };
 
+  // 重み付き + インターリービングの短時間セッション
   const startAllShuffle = () => {
-    const qs = [...QUESTIONS].sort(() => Math.random() - 0.5).slice(0, 12);
-    setQuizSession({ mode: 'all', questions: qs, label: '全範囲シャッフル' });
+    const qs = interleaveByCategory(pickWeighted(QUESTIONS, 15, progress));
+    setQuizSession({ mode: 'all', questions: qs, label: '重み付きインターリーブ' });
     setScreen('quiz');
   };
 
   const startSrsReview = () => {
     const dueIds = getDueQuestionIds(progress);
     if (dueIds.length === 0) return;
+    const srs = progress.srs || {};
     const qs = QUESTIONS
       .filter((q) => dueIds.includes(q.id))
       .sort(() => Math.random() - 0.5)
-      .slice(0, 15); // 1回あたり最大15問
-    setQuizSession({ mode: 'srsReview', questions: qs, label: '今日の復習' });
+      // 期日を大きく過ぎたもの → リーチ の順に優先
+      .sort((a, b) => {
+        const sa = srs[a.id] || {}, sb = srs[b.id] || {};
+        if (sa.due !== sb.due) return (sa.due || '') < (sb.due || '') ? -1 : 1;
+        return (sb.lapses || 0) - (sa.lapses || 0);
+      })
+      .slice(0, 20); // 1回あたり最大20問
+    setQuizSession({ mode: 'srsReview', questions: interleaveByCategory(qs), label: '今日の復習' });
     setScreen('quiz');
   };
 
   const startFillQuiz = (filterFn) => {
     const pool = filterFn ? FILL_QUESTIONS.filter(filterFn) : FILL_QUESTIONS;
-    const qs = [...pool].sort(() => Math.random() - 0.5).slice(0, Math.min(10, pool.length));
-    setQuizSession({ mode: 'fill', questions: qs, label: '記述式(コマ問)' });
+    const dueIds = getDueFillIds(progress);
+    // 復習期日に達したコマ問を先に、残りをランダムで補充
+    const due = pool.filter(q => dueIds.includes(q.id)).sort(() => Math.random() - 0.5);
+    const rest = pool.filter(q => !dueIds.includes(q.id)).sort(() => Math.random() - 0.5);
+    const qs = [...due, ...rest].slice(0, Math.min(10, pool.length));
+    setQuizSession({
+      mode: 'fill', questions: qs,
+      label: due.length > 0 ? '記述式(コマ問)・期日優先' : '記述式(コマ問)',
+    });
     setScreen('fillQuiz');
   };
 
@@ -1300,9 +1478,13 @@ export default function LpicActiveLearning() {
     });
     const correctCount = results.filter(r => r.correct).length;
     const newStreak = computeStreak(progress.lastStudyDate, progress.streak);
+    // SRS更新（記述式も四択と同じ間隔反復に載せる）
+    const newFillSrs = { ...(progress.fillSrs || {}) };
+    results.forEach((r) => { newFillSrs[r.questionId] = applySrs(newFillSrs[r.questionId], r.correct); });
     setProgress({
       ...progress,
       fillStats: newFillStats,
+      fillSrs: newFillSrs,
       totalAnswered: progress.totalAnswered + results.length,
       totalCorrect: progress.totalCorrect + correctCount,
       streak: newStreak,
@@ -1700,6 +1882,8 @@ function Dashboard({ progress, accuracy, todayDayNum, examReadiness, categoryMas
   const completedRate = Math.round((progress.completedDays.length / 28) * 100);
   const todayDone = progress.lastStudyDate === todayStr();
   const dueCount = getDueQuestionIds(progress).length;
+  const dueFillCount = getDueFillIds(progress).length;
+  const leechCount = getLeechIds(progress).length;
 
   return (
     <div className="max-w-6xl mx-auto px-6 sm:px-10 py-8 sm:py-12">
@@ -1893,6 +2077,9 @@ function Dashboard({ progress, accuracy, todayDayNum, examReadiness, categoryMas
         </div>
       </div>
 
+      {/* 学習メソッド */}
+      <MethodPanel />
+
       {/* 補助的アクション */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <button
@@ -1907,7 +2094,9 @@ function Dashboard({ progress, accuracy, todayDayNum, examReadiness, categoryMas
           <div className="flex-1">
             <div className="lc-mincho font-semibold">今日の復習</div>
             <div className="lc-mincho text-xs" style={{ color: '#7d6b4f' }}>
-              {dueCount > 0 ? `${dueCount}問が復習の期日です` : '今日の復習はありません'}
+              {dueCount > 0
+                ? `${dueCount}問が復習の期日です${dueFillCount > 0 ? ` / コマ問も${dueFillCount}問` : ''}`
+                : (dueFillCount > 0 ? `四択の期日はなし / コマ問が${dueFillCount}問` : '今日の復習はありません')}
             </div>
           </div>
           <ChevronRight className="w-4 h-4" />
@@ -1917,8 +2106,8 @@ function Dashboard({ progress, accuracy, todayDayNum, examReadiness, categoryMas
             <Sparkles className="w-5 h-5" style={{ color: '#1c1814' }} />
           </div>
           <div className="flex-1">
-            <div className="lc-mincho font-semibold">全範囲シャッフル(12問)</div>
-            <div className="lc-mincho text-xs" style={{ color: '#7d6b4f' }}>気分転換に短時間で総当たり</div>
+            <div className="lc-mincho font-semibold">重み付きインターリーブ(15問)</div>
+            <div className="lc-mincho text-xs" style={{ color: '#7d6b4f' }}>出題比重×弱点で抽出し、分野を混ぜて出題</div>
           </div>
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -1934,7 +2123,9 @@ function Dashboard({ progress, accuracy, todayDayNum, examReadiness, categoryMas
           <div className="flex-1">
             <div className="lc-mincho font-semibold">苦手だけを復習</div>
             <div className="lc-mincho text-xs" style={{ color: '#7d6b4f' }}>
-              {progress.weakIds.length > 0 ? `${progress.weakIds.length}問の弱点を集中突破` : 'まだ苦手は記録されていません'}
+              {progress.weakIds.length > 0
+                ? `${progress.weakIds.length}問の弱点を集中突破${leechCount > 0 ? ` / うちリーチ${leechCount}問` : ''}`
+                : 'まだ苦手は記録されていません'}
             </div>
           </div>
           <ChevronRight className="w-4 h-4" />
@@ -1947,6 +2138,53 @@ function Dashboard({ progress, accuracy, todayDayNum, examReadiness, categoryMas
           進捗をリセット
         </button>
       </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// 学習メソッド(最新版)の掲示
+// ─────────────────────────────────────────────
+const METHOD_STEPS = [
+  { kanji: '想', title: '想起優先', desc: '読む前に解く。解説は答えを出したあとに読む。思い出す作業そのものが記憶を作る。' },
+  { kanji: '散', title: '分散学習', desc: '間隔反復(SM-2改・上限21日)。まず「今日の復習」を消化してから新しい Day に進む。' },
+  { kanji: '混', title: 'インターリーブ', desc: '同じ分野を続けず混ぜて出題。似た選択肢の見分けがつくようになる。' },
+  { kanji: '重', title: '重み付き出題', desc: '公式の出題比重(weight)が高い項目と、正解率の低い問題を厚く配分する。' },
+  { kanji: '漏', title: 'リーチ管理', desc: `${LEECH_LAPSES}回以上落とした問題は別枠で先に潰す。放置が本番の失点に直結する。` },
+  { kanji: '験', title: '本番シミュレーション', desc: `${EXAM_SPEC.questionCount}問${EXAM_SPEC.durationMin}分・合格は${EXAM_SPEC.passScore}。週1回は通しで受ける。` },
+];
+
+function MethodPanel() {
+  return (
+    <div className="lc-paper rounded-2xl p-6 sm:p-7 mb-8 lc-anim-fadeup" style={{ animationDelay: '0.45s' }}>
+      <div className="flex items-center gap-3 mb-1">
+        <Lightbulb className="w-5 h-5" style={{ color: '#c1272d' }} />
+        <h2 className="lc-mincho font-bold text-lg">学習メソッド</h2>
+        <span className="lc-mono text-[10px] px-2 py-0.5 rounded" style={{ background: '#163a5f14', color: '#163a5f' }}>
+          v{EXAM_SPEC.version} / {EXAM_SPEC.codes}
+        </span>
+      </div>
+      <p className="lc-mincho text-xs mb-5" style={{ color: '#7d6b4f' }}>
+        このアプリの出題はすべて下の6原則で組まれている。順番どおりに従うだけでよい。
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {METHOD_STEPS.map((m, i) => (
+          <div key={m.kanji} className="lc-paper-flat rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="w-7 h-7 rounded flex items-center justify-center lc-mincho font-bold text-sm"
+                    style={{ background: '#c1272d12', color: '#c1272d' }}>{m.kanji}</span>
+              <span className="lc-mincho font-semibold text-sm">{i + 1}. {m.title}</span>
+            </div>
+            <p className="lc-mincho text-xs leading-relaxed" style={{ color: '#6b5d4f' }}>{m.desc}</p>
+          </div>
+        ))}
+      </div>
+      <div className="lc-divider my-5" />
+      <p className="lc-mincho text-[11px] leading-relaxed" style={{ color: '#7d6b4f' }}>
+        受験情報(2026年8月時点): Version {EXAM_SPEC.version}({EXAM_SPEC.codes})が現行。
+        各試験 {EXAM_SPEC.questionCount}問 / {EXAM_SPEC.durationMin}分、合格は{EXAM_SPEC.passScore}。
+        {EXAM_SPEC.delivery}で受験でき、認定の有効期間は{EXAM_SPEC.validityYears}年。受験前に公式の出題範囲の更新有無を確認すること。
+      </p>
     </div>
   );
 }
@@ -2108,8 +2346,8 @@ function LibraryScreen({ progress, categoryMastery, onStartCategory, onShuffle, 
             <Sparkles className="w-5 h-5" />
           </div>
           <div className="flex-1">
-            <div className="lc-mincho font-semibold">全範囲シャッフル</div>
-            <div className="lc-mincho text-xs" style={{ color: '#7d6b4f' }}>12問をランダム抽出</div>
+            <div className="lc-mincho font-semibold">重み付きインターリーブ</div>
+            <div className="lc-mincho text-xs" style={{ color: '#7d6b4f' }}>出題比重と弱点から15問を抽出</div>
           </div>
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -2444,7 +2682,7 @@ function ResultScreen({ session, progress, onHome, onRetry, onReview }) {
 // ─────────────────────────────────────────────
 function ExamPrepScreen({ progress, onStartFillQuiz, onStartMockExam }) {
   const goldenCount = progress.goldenIds.length;
-  const goldenRate = Math.round((goldenCount / 217) * 100);
+  const goldenRate = Math.round((goldenCount / QUESTIONS.length) * 100);
   const fillAttempted = Object.keys(progress.fillStats).length;
   const history = progress.mockHistory || [];
   const lastMock = history[history.length - 1];
@@ -2476,7 +2714,7 @@ function ExamPrepScreen({ progress, onStartFillQuiz, onStartMockExam }) {
           <span className="lc-mincho text-xs tracking-[0.4em]" style={{ color: '#c1272d' }}>試験対策・本番想定</span>
         </div>
         <h1 className="lc-mincho font-bold text-3xl sm:text-4xl mb-2">本番に向けた仕上げ</h1>
-        <p className="lc-mincho text-sm" style={{ color: '#6b5d4f' }}>記述式(コマ問)で精度を磨き、本試験モード(60問60分)で実戦感を養う。</p>
+        <p className="lc-mincho text-sm" style={{ color: '#6b5d4f' }}>記述式(コマ問)で精度を磨き、本試験モード(60問90分・本番と同じ配分)で実戦感を養う。</p>
       </header>
 
       {/* 主要指標 */}
@@ -2488,7 +2726,7 @@ function ExamPrepScreen({ progress, onStartFillQuiz, onStartMockExam }) {
           </div>
           <div className="flex items-baseline gap-1">
             <span className="lc-mincho text-3xl font-bold" style={{ color: '#1c1814' }}>{goldenCount}</span>
-            <span className="lc-mincho text-sm" style={{ color: '#7d6b4f' }}>/ 217</span>
+            <span className="lc-mincho text-sm" style={{ color: '#7d6b4f' }}>/ {QUESTIONS.length}</span>
           </div>
           <div className="lc-mincho text-[11px] mt-1" style={{ color: '#7d6b4f' }}>{goldenRate}% 完全定着</div>
         </div>
@@ -2531,7 +2769,7 @@ function ExamPrepScreen({ progress, onStartFillQuiz, onStartMockExam }) {
       <section className="mb-8 lc-anim-fadeup" style={{ animationDelay: '0.25s' }}>
         <h2 className="lc-mincho font-bold text-lg mb-4 flex items-center gap-2">
           <Clock className="w-5 h-5" style={{ color: '#c1272d' }} />
-          本試験モード(60問・60分・合格ライン65%)
+          本試験モード(60問・90分・本番準拠)
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button onClick={() => onStartMockExam('101')} className="lc-paper lc-card-hover rounded-lg p-6 text-left">
@@ -2545,7 +2783,7 @@ function ExamPrepScreen({ progress, onStartFillQuiz, onStartMockExam }) {
               </div>
             </div>
             <p className="lc-mincho text-xs leading-relaxed" style={{ color: '#6b5d4f' }}>
-              101試験範囲(Topic 101-104)から60問。本番想定の60分タイマー付き。
+              101試験範囲(Topic 101-104)から60問。本番と同じ90分タイマー付き。
             </p>
           </button>
           <button onClick={() => onStartMockExam('102')} className="lc-paper lc-card-hover rounded-lg p-6 text-left">
@@ -2559,7 +2797,7 @@ function ExamPrepScreen({ progress, onStartFillQuiz, onStartMockExam }) {
               </div>
             </div>
             <p className="lc-mincho text-xs leading-relaxed" style={{ color: '#6b5d4f' }}>
-              102試験範囲(Topic 105-110)から60問。本番想定の60分タイマー付き。
+              102試験範囲(Topic 105-110)から60問。本番と同じ90分タイマー付き。
             </p>
           </button>
           <button onClick={() => onStartMockExam('both')} className="lc-paper lc-card-hover rounded-lg p-6 text-left">
@@ -2595,7 +2833,11 @@ function ExamPrepScreen({ progress, onStartFillQuiz, onStartMockExam }) {
             </div>
             <div className="flex-1">
               <div className="lc-mincho font-semibold">ランダム10問</div>
-              <div className="lc-mincho text-xs" style={{ color: '#7d6b4f' }}>全範囲からランダム抽出</div>
+              <div className="lc-mincho text-xs" style={{ color: '#7d6b4f' }}>
+                {getDueFillIds(progress).length > 0
+                  ? `復習期日の${getDueFillIds(progress).length}問を優先して出題`
+                  : '全範囲から抽出(コマ問も間隔反復の対象)'}
+              </div>
             </div>
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -2899,7 +3141,7 @@ function MockResultScreen({ session, progress, onHome, onRetry }) {
             {String(min).padStart(2, '0')}:{String(sec).padStart(2, '0')}
           </div>
           <div className="lc-mincho text-[11px] mt-1" style={{ color: '#7d6b4f' }}>
-            制限時間 60分 / 残 {Math.floor((MOCK_EXAM_DURATION_SEC - session.durationSec) / 60)}分
+            制限時間 90分 / 残 {Math.floor((MOCK_EXAM_DURATION_SEC - session.durationSec) / 60)}分
           </div>
           <div className="lc-mincho text-[11px] mt-2" style={{ color: '#7d6b4f' }}>
             1問あたり <span className="lc-mono font-bold">{Math.round(session.durationSec / total)}</span> 秒
